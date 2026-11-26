@@ -68,7 +68,7 @@ export default [
 
 Pages are discovered under `rootDir`, skipping `node_modules` and `.git` and not following symbolic links. Path matching is case-sensitive, like links on GitHub, even on case-insensitive filesystems.
 
-Whether a page is reachable depends on other files. With `eslint --cache`, removing a link from one page does not re-lint the page it orphans until that page changes, so run this rule without `--cache` in CI.
+Whether a page is reachable depends on other files. With `eslint --cache`, removing a link from one page does not re-lint the page it orphans until that page changes, so run this rule without `--cache` in CI. In long-running processes such as editor servers, the current text of each linted page counts immediately, and changes made outside ESLint, such as a `git checkout`, count within about two seconds.
 
 ## Contributing
 

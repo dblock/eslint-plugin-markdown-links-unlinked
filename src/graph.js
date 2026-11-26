@@ -1,4 +1,4 @@
-import { readdirSync, readFileSync, statSync } from "node:fs";
+import { lstatSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join, posix } from "node:path";
 import picomatch from "picomatch";
 import { extractLinks } from "./links.js";
@@ -7,8 +7,10 @@ const SKIPPED_DIRECTORIES = new Set(["node_modules", ".git"]);
 const DIRECTORY_PAGES = ["README", "index"];
 const SCHEME = /^[a-z][a-z\d+.-]*:/iu;
 
-/** @type {Map<string, {snapshot: Map<string, string>, graph: PageGraph}>} */
-const cache = new Map();
+/** Milliseconds between sweeps of the file system for changes made outside ESLint. */
+export const SWEEP_INTERVAL = 2000;
+
+let now = () => Date.now();
 
 /**
  * @typedef {object} PageGraph
@@ -18,42 +20,115 @@ const cache = new Map();
  */
 
 /**
- * Returns the link graph for a root directory and options, reusing the previous graph while no
- * page or walked directory has been added, removed, or modified.
+ * @typedef {object} GraphState
+ * @property {Map<string, {signature: string, links: string[]}>} pages Each page's file signature and link destinations.
+ * @property {number} sweptAt Clock time of the last sweep.
+ * @property {PageGraph | undefined} graph Reachability for the current pages, or `undefined` once edges change.
+ */
+
+/** @type {Map<string, GraphState>} */
+const states = new Map();
+
+/**
+ * Returns the link graph for a root directory and options. The graph is built once per process,
+ * swept for changes made outside ESLint at most every {@link SWEEP_INTERVAL} milliseconds, and
+ * updated from the text of each linted page so its current links count without reading it from disk.
  * @param {string} rootDir Absolute root directory.
  * @param {{roots: string[], ignore: string[], extensions: string[]}} options Normalized options.
+ * @param {{page: string, text: string}} [live] The linted page and its current text.
  * @returns {PageGraph} The page graph.
  */
-export function getPageGraph(rootDir, options) {
+export function getPageGraph(rootDir, options, live) {
   const key = JSON.stringify([rootDir, options.roots, options.ignore, options.extensions]);
-  const cached = cache.get(key);
-  if (cached && isCurrent(rootDir, cached.snapshot)) return cached.graph;
-  const { pages, snapshot } = discover(rootDir, options);
-  const graph = buildGraph(rootDir, pages, options);
-  cache.set(key, { snapshot, graph });
-  return graph;
+  let state = states.get(key);
+  let parsedLive = false;
+  if (!state) {
+    state = { pages: new Map(), sweptAt: now(), graph: undefined };
+    states.set(key, state);
+    parsedLive = sweep(rootDir, options, state, live);
+  } else if (now() - state.sweptAt >= SWEEP_INTERVAL) {
+    state.sweptAt = now();
+    parsedLive = sweep(rootDir, options, state, live);
+  }
+  if (live && !parsedLive) applyLive(rootDir, options, state, live);
+  state.graph ??= buildGraph(state, options);
+  return state.graph;
 }
 
-/** Clears cached graphs. */
+/** Clears all graphs. */
 export function clearPageGraphCache() {
-  cache.clear();
+  states.clear();
 }
 
 /**
- * Walks the root directory for pages, recording each walked directory and page with its
- * modification time and size so later calls can detect changes without walking again.
- * Symbolic links are not followed.
+ * Replaces the clock that throttles sweeps. For tests.
+ * @param {() => number} clock Returns the current time in milliseconds.
+ * @returns {() => void} Restores the previous clock.
+ */
+export function setClock(clock) {
+  const previous = now;
+  now = clock;
+  return () => {
+    now = previous;
+  };
+}
+
+/**
+ * Walks the root directory and brings the state up to date: pages that disappeared are dropped,
+ * and pages that are new or whose modification time or size changed are parsed again. The linted
+ * page is parsed from its live text instead of from disk.
+ * @returns {boolean} Whether the linted page was parsed.
+ */
+function sweep(rootDir, options, state, live) {
+  const found = discover(rootDir, options);
+  for (const page of state.pages.keys()) {
+    if (!found.has(page)) {
+      state.pages.delete(page);
+      state.graph = undefined;
+    }
+  }
+  let parsedLive = false;
+  for (const [page, signature] of found) {
+    if (state.pages.get(page)?.signature === signature) continue;
+    const isLive = live?.page === page;
+    parsedLive ||= isLive;
+    const text = isLive ? live.text : read(join(rootDir, page));
+    state.pages.set(page, { signature, links: text === undefined ? [] : extractLinks(text) });
+    state.graph = undefined;
+  }
+  return parsedLive;
+}
+
+/**
+ * Replaces the linted page's links with those in its current text, adding the page when it is on
+ * disk but appeared since the last sweep. Text without a qualifying file is ignored.
+ */
+function applyLive(rootDir, options, state, { page, text }) {
+  let entry = state.pages.get(page);
+  if (!entry) {
+    const signature = pageSignature(rootDir, page, options);
+    if (signature === undefined) return;
+    entry = { signature, links: [] };
+    state.pages.set(page, entry);
+    state.graph = undefined;
+  }
+  const links = extractLinks(text);
+  if (links.length === entry.links.length && links.every((link, index) => link === entry.links[index])) return;
+  entry.links = links;
+  state.graph = undefined;
+}
+
+/**
+ * Walks the root directory for pages and their signatures. Symbolic links are not followed.
+ * @returns {Map<string, string>} Signature of each page.
  */
 function discover(rootDir, { ignore, extensions }) {
   const isIgnored = picomatch(ignore, { dot: true });
-  const pages = [];
-  const snapshot = new Map();
+  const pages = new Map();
   const walk = (relative) => {
-    const absolute = relative ? join(rootDir, relative) : rootDir;
-    snapshot.set(relative, signature(absolute));
     let entries;
     try {
-      entries = readdirSync(absolute, { withFileTypes: true });
+      entries = readdirSync(relative ? join(rootDir, relative) : rootDir, { withFileTypes: true });
     } catch {
       return;
     }
@@ -63,46 +138,67 @@ function discover(rootDir, { ignore, extensions }) {
         if (!SKIPPED_DIRECTORIES.has(entry.name)) walk(path);
       } else if (entry.isFile() && extensions.some((extension) => entry.name.endsWith(extension))
         && !isIgnored(path)) {
-        pages.push(path);
-        snapshot.set(path, signature(join(rootDir, path)));
+        const value = signature(join(rootDir, path));
+        if (value !== undefined) pages.set(path, value);
       }
     }
   };
   walk("");
-  return { pages, snapshot };
+  return pages;
 }
 
+/**
+ * Returns the signature of a page that discovery would find, or `undefined` when the path is not
+ * a page: a skipped or ignored path, another extension, a missing file, or one reached through a
+ * symbolic link.
+ */
+function pageSignature(rootDir, page, { ignore, extensions }) {
+  const segments = page.split("/");
+  const name = segments.at(-1);
+  if (segments.slice(0, -1).some((segment) => SKIPPED_DIRECTORIES.has(segment))) return undefined;
+  if (!extensions.some((extension) => name.endsWith(extension))) return undefined;
+  if (picomatch(ignore, { dot: true })(page)) return undefined;
+  let path = rootDir;
+  for (const [index, segment] of segments.entries()) {
+    path = join(path, segment);
+    let stats;
+    try {
+      stats = lstatSync(path);
+    } catch {
+      return undefined;
+    }
+    if (index === segments.length - 1 ? !stats.isFile() : !stats.isDirectory()) return undefined;
+  }
+  return signature(path);
+}
+
+/** Returns a file's modification time and size, or `undefined` when it cannot be read. */
 function signature(path) {
   try {
     const stats = statSync(path);
     return `${stats.mtimeMs}:${stats.size}`;
   } catch {
-    return "missing";
+    return undefined;
   }
 }
 
-function isCurrent(rootDir, snapshot) {
-  for (const [relative, value] of snapshot) {
-    if (signature(relative ? join(rootDir, relative) : rootDir) !== value) return false;
+function read(path) {
+  try {
+    return readFileSync(path, "utf8");
+  } catch {
+    return undefined;
   }
-  return true;
 }
 
-function buildGraph(rootDir, pageList, { roots: rootPatterns, extensions }) {
-  const pages = new Set(pageList);
+function buildGraph(state, { roots: rootPatterns, extensions }) {
+  const pages = new Set(state.pages.keys());
   const isRoot = picomatch(rootPatterns, { dot: true });
-  const roots = pageList.filter((page) => isRoot(page));
+  const roots = [...pages].filter((page) => isRoot(page));
   const reachable = new Set(roots);
   const queue = [...roots];
   while (queue.length > 0) {
     const page = queue.shift();
-    let text;
-    try {
-      text = readFileSync(join(rootDir, page), "utf8");
-    } catch {
-      continue;
-    }
-    for (const destination of extractLinks(text)) {
+    for (const destination of state.pages.get(page).links) {
       for (const target of resolveTargets(page, destination, pages, extensions)) {
         if (!reachable.has(target)) {
           reachable.add(target);
