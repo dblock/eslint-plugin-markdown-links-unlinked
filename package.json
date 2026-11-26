@@ -1,6 +1,6 @@
 {
   "name": "eslint-plugin-markdown-links-unlinked",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "An ESLint plugin that reports Markdown pages not linked from any root page.",
   "type": "module",
   "exports": {
