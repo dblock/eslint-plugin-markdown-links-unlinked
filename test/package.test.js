@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { execFileSync, spawnSync } from "node:child_process";
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { basename, join } from "node:path";
 import process from "node:process";
@@ -18,21 +18,22 @@ test("the packed archive installs and loads in a consumer", async () => {
   try {
     const override = process.env.PACKAGE_ARCHIVE;
     let archive;
-    let paths;
     if (override) {
       archive = override;
-      paths = execFileSync("tar", ["-tzf", archive], { encoding: "utf8" })
-        .trim().split("\n").map((path) => path.replace(/^package\//u, ""));
     } else {
-      // npm 11 prints an array of pack results; npm 12 prints an object keyed by package name.
-      const result = JSON.parse(execFileSync(
-        npm, ["pack", "--json", "--pack-destination", directory],
-        { cwd: root, encoding: "utf8", shell: process.platform === "win32" },
-      ));
-      const [packed] = Array.isArray(result) ? result : Object.values(result);
-      archive = join(directory, packed.filename);
-      paths = packed.files.map((file) => file.path);
+      // Pack into an empty directory and take the only archive, rather than parsing `npm pack --json`,
+      // whose shape differs between npm 11 and npm 12 (the release workflow's npm).
+      const destination = join(directory, "pack");
+      await mkdir(destination);
+      execFileSync(npm, ["pack", "--pack-destination", destination], {
+        cwd: root, stdio: "pipe", shell: process.platform === "win32",
+      });
+      const archives = (await readdir(destination)).filter((name) => name.endsWith(".tgz"));
+      assert.equal(archives.length, 1, `npm pack must produce one archive, found: ${archives.join(", ")}`);
+      archive = join(destination, archives[0]);
     }
+    const paths = execFileSync("tar", ["-tzf", archive], { encoding: "utf8" })
+      .trim().split(/\r?\n/u).map((path) => path.replace(/^package\//u, ""));
     for (const path of ["package.json", "src/index.js", "src/graph.js", "src/links.js", "src/rules/no-unlinked-pages.js", "README.md", "LICENSE", "assets/logo.svg"]) {
       assert.ok(paths.includes(path), `The archive must include ${path}.`);
     }
