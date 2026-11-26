@@ -1,3 +1,5 @@
+<img src="assets/logo.svg" alt="Worried googly-eyed page holding a snapped chain link apart from two linked pages" width="160">
+
 # ESLint Plugin Markdown Links Unlinked
 
 [![Test](https://github.com/dblock/eslint-plugin-markdown-links-unlinked/actions/workflows/test.yml/badge.svg)](https://github.com/dblock/eslint-plugin-markdown-links-unlinked/actions/workflows/test.yml) [![Lint](https://github.com/dblock/eslint-plugin-markdown-links-unlinked/actions/workflows/lint.yml/badge.svg)](https://github.com/dblock/eslint-plugin-markdown-links-unlinked/actions/workflows/lint.yml) [![Package](https://github.com/dblock/eslint-plugin-markdown-links-unlinked/actions/workflows/package.yml/badge.svg)](https://github.com/dblock/eslint-plugin-markdown-links-unlinked/actions/workflows/package.yml) [![Coverage](https://coveralls.io/repos/github/dblock/eslint-plugin-markdown-links-unlinked/badge.svg?branch=master)](https://coveralls.io/github/dblock/eslint-plugin-markdown-links-unlinked?branch=master)

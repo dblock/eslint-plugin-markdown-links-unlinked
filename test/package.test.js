@@ -31,7 +31,7 @@ test("the packed archive installs and loads in a consumer", async () => {
       archive = join(directory, packed.filename);
       paths = packed.files.map((file) => file.path);
     }
-    for (const path of ["package.json", "src/index.js", "src/graph.js", "src/links.js", "src/rules/no-unlinked-pages.js", "README.md", "LICENSE"]) {
+    for (const path of ["package.json", "src/index.js", "src/graph.js", "src/links.js", "src/rules/no-unlinked-pages.js", "README.md", "LICENSE", "assets/logo.svg"]) {
       assert.ok(paths.includes(path), `The archive must include ${path}.`);
     }
     assert.ok(paths.every((path) =>

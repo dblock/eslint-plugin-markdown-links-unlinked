@@ -35,3 +35,9 @@ Whether a page is reachable depends on other files. With `eslint --cache`, remov
 ## Out of Scope
 
 The first version does not report links to missing files or fragments (use `markdown-links/no-missing-path` and `markdown/no-missing-link-fragments`), unused images or other assets, or pages reachable only through site navigation such as a VitePress sidebar.
+
+## Logo
+
+[`assets/logo.svg`](assets/logo.svg) is original artwork created with Claude under the project's [MIT license](LICENSE), with no adapted third-party assets. The SVG is both the editable source and README display asset: a worried amber page holding a snapped chain link apart from two linked pale blue pages, on a transparent 256-by-256 canvas.
+
+Keep the logo above the README title at 160 pixels, with descriptive alternative text. Edit the SVG directly and preserve its view box, accessible title and description, and transparent background. Inspect full-size and README-size rendering on light and dark backgrounds, for example with `rsvg-convert -w 160 assets/logo.svg`; keep previews outside the repository. The packed-consumer test verifies that the logo is included in the archive.

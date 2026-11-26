@@ -11,6 +11,7 @@ mtime
 nowrap
 OIDC
 picomatch
+SVG
 TOML
 unlinked
 Vite
