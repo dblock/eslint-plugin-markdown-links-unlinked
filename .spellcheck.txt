@@ -1,13 +1,17 @@
 CLI
 Coveralls
 dblock
+dogfoods
 GFM
+htmlparser
 js
 lockfile
 mdast
 mtime
 nowrap
 OIDC
+picomatch
+TOML
 unlinked
 Vite
 worktree

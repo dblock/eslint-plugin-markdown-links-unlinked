@@ -16,7 +16,7 @@ npm run package:check
 
 Run `npm test` and `npm run lint` before every push, including updates to a PR. Run final checks before committing and reuse their results for the push when tested content and configuration have not changed. `npm test` includes the packed-consumer test; `npm run package:check` runs it alone. `PACKAGE_ARCHIVE` selects an existing archive for that test; an unset or empty value packs a fresh one.
 
-`npm run lint:code` checks source and embedded JavaScript examples. `npm run lint:markdown` uses ESLint for Markdown structure, prose, spelling, single-line paragraphs, and title-case headings, combining `@eslint/markdown`, `eslint-plugin-markdown-preferences`, `eslint-plugin-markdown-preferences-paragraph` with `width: "nowrap"`, and `eslint-plugin-prose-spellcheck` with US English, software terminology, and `.spellcheck.txt`. Local rules in `scripts/documentation-plugin.js` require a first-level first heading and a final newline. `npm run lint:workflows` checks title case for workflow, job, and step display names.
+`npm run lint:code` checks source and embedded JavaScript examples. `npm run lint:markdown` uses ESLint for Markdown structure, prose, spelling, single-line paragraphs, and title-case headings, combining `@eslint/markdown`, `eslint-plugin-markdown-preferences`, `eslint-plugin-markdown-preferences-paragraph` with `width: "nowrap"`, and `eslint-plugin-prose-spellcheck` with US English, software terminology, and `.spellcheck.txt`. Local rules in `scripts/documentation-plugin.js` require a first-level first heading and a final newline. The documentation lint also runs this plugin's `no-unlinked-pages` rule, so link new root documents from README. `npm run lint:workflows` checks title case for workflow, job, and step display names.
 
 Development uses `@eslint/markdown` 9. The root `overrides` let the development-only documentation plugins, whose released peer ranges do not include 9 yet, share it; they never reach consumers. Remove each override once that plugin's peer range includes 9, and never override this plugin's own peers.
 
@@ -26,7 +26,7 @@ Test, Lint, and Package are separate CI workflows. The Test matrix uses explicit
 
 ## Tests
 
-Tests use `node --test` under `test/`. `test/plugin.test.js` covers the public export, `test/package.test.js` packs the archive, inspects its contents, installs it in a temporary consumer, and runs the real ESLint CLI, and `test/workflow-names.test.js` covers the display-name checker. Aim for coverage close to 100% of project-owned runtime code with meaningful behavioral tests, including errors and edge cases, and inspect `npm run test:coverage` output rather than excluding real code.
+Tests use `node --test` under `test/`. `test/plugin.test.js` covers the public export, `test/rule.test.js` lints the fixture trees in `test/fixtures/` (`links`, `defaults`, `options`, `missing-root`) with the real ESLint API through `test-support/lint.js` and runs `RuleTester`, `test/graph.test.js` covers link extraction, target resolution, discovery, permissions, and cache invalidation in temporary trees, `test/package.test.js` packs the archive, inspects its contents, installs it in a temporary consumer, and runs the real ESLint CLI, and `test/workflow-names.test.js` covers the display-name checker. Aim for coverage close to 100% of project-owned runtime code with meaningful behavioral tests, including errors and edge cases, and inspect `npm run test:coverage` output rather than excluding real code.
 
 ## Pull Requests
 
