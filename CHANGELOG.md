@@ -7,4 +7,5 @@
 - [#6](https://github.com/dblock/eslint-plugin-markdown-links-unlinked/pull/6): Added benchmarks for graph building, sweeps, live updates, reachability, and full ESLint runs, with a quick profile in CI - [@dblock](https://github.com/dblock).
 - [#7](https://github.com/dblock/eslint-plugin-markdown-links-unlinked/pull/7): Improved performance by not parsing linted pages again when their text is unchanged and by caching resolved link targets, roughly halving the rule's overhead - [@dblock](https://github.com/dblock).
 - [#9](https://github.com/dblock/eslint-plugin-markdown-links-unlinked/pull/9): Canceled superseded pull request CI runs - [@dblock](https://github.com/dblock).
+- [#10](https://github.com/dblock/eslint-plugin-markdown-links-unlinked/pull/10): Simplified the README for users, with a clearer `allow` and `ignore` distinction, a Limitations list, and installation ready for the 0.1.0 release, and made the contributor documentation easier to scan - [@dblock](https://github.com/dblock).
 - Your contribution here.
