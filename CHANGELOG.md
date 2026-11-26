@@ -9,4 +9,5 @@
 - [#9](https://github.com/dblock/eslint-plugin-markdown-links-unlinked/pull/9): Canceled superseded pull request CI runs - [@dblock](https://github.com/dblock).
 - [#10](https://github.com/dblock/eslint-plugin-markdown-links-unlinked/pull/10): Simplified the README for users, with a clearer `allow` and `ignore` distinction, a Limitations list, and installation ready for the 0.1.0 release, and made the contributor documentation easier to scan - [@dblock](https://github.com/dblock).
 - [#11](https://github.com/dblock/eslint-plugin-markdown-links-unlinked/pull/11): Added release automation with npm-package-release 0.4.0 and npm Trusted Publishing, including name reservation with `npr bootstrap` and a simulated release test - [@dblock](https://github.com/dblock).
+- [#12](https://github.com/dblock/eslint-plugin-markdown-links-unlinked/pull/12): Fixed the packed-consumer test under npm 12, which the release workflow uses, and validated the package with npm 12 in CI - [@dblock](https://github.com/dblock).
 - Your contribution here.

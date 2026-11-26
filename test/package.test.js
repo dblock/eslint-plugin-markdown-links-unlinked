@@ -24,10 +24,12 @@ test("the packed archive installs and loads in a consumer", async () => {
       paths = execFileSync("tar", ["-tzf", archive], { encoding: "utf8" })
         .trim().split("\n").map((path) => path.replace(/^package\//u, ""));
     } else {
-      const [packed] = JSON.parse(execFileSync(
+      // npm 11 prints an array of pack results; npm 12 prints an object keyed by package name.
+      const result = JSON.parse(execFileSync(
         npm, ["pack", "--json", "--pack-destination", directory],
         { cwd: root, encoding: "utf8", shell: process.platform === "win32" },
       ));
+      const [packed] = Array.isArray(result) ? result : Object.values(result);
       archive = join(directory, packed.filename);
       paths = packed.files.map((file) => file.path);
     }
