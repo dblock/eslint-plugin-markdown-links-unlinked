@@ -8,6 +8,10 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   test:
     name: Test on Node ${{ matrix.entry.node }} with ESLint ${{ matrix.entry.eslint }} and ESLint Markdown ${{ matrix.entry.markdown }}
