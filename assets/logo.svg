@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256" role="img" aria-labelledby="title description">
+  <title id="title">Unlinked Pages</title>
+  <desc id="description">A worried googly-eyed amber page holds a snapped chain link while two linked pale blue pages sit together in the background.</desc>
+  <g stroke="#b8cedf" stroke-width="3" stroke-linejoin="round">
+    <g transform="rotate(-6 48 59)">
+      <path d="M28 26h31.4L74 40.6V86a6 6 0 0 1-6 6H28a6 6 0 0 1-6-6V32a6 6 0 0 1 6-6Z" fill="#f1f7fc"/>
+      <path d="M59.4 26v14.6H74Z" fill="#deebf6"/>
+      <path d="M32 50.6h32.2M32 61.7h23.4M32 72.9h32.2" fill="none" stroke="#8cafca" stroke-width="5" stroke-linecap="round"/>
+    </g>
+    <g transform="rotate(5 122 51)">
+      <path d="M102 18h31.4L148 32.6V78a6 6 0 0 1-6 6h-40a6 6 0 0 1-6-6V24a6 6 0 0 1 6-6Z" fill="#f1f7fc"/>
+      <path d="M133.4 18v14.6H148Z" fill="#deebf6"/>
+      <path d="M106 42.6h32.2M106 53.7h23.4M106 64.9h32.2" fill="none" stroke="#8cafca" stroke-width="5" stroke-linecap="round"/>
+    </g>
+  </g>
+  <path d="M74 56h22" fill="none" stroke="#8cafca" stroke-width="6" stroke-linecap="round"/>
+  <ellipse cx="128" cy="236" rx="74" ry="9" fill="#263248" opacity=".09"/>
+  <g stroke="#263248" stroke-width="5" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M88 120h64l26 26v74a8 8 0 0 1-8 8H88a8 8 0 0 1-8-8v-92a8 8 0 0 1 8-8Z" fill="#fff4d6"/>
+    <path d="M152 120v26h26Z" fill="#ffe3a3"/>
+    <ellipse cx="110" cy="164" rx="14" ry="16" fill="#fffdf6"/>
+    <ellipse cx="146" cy="164" rx="13" ry="15" fill="#fffdf6"/>
+    <circle cx="114" cy="170" r="6" fill="#263248" stroke="none"/>
+    <circle cx="142" cy="170" r="6" fill="#263248" stroke="none"/>
+    <path d="M98 150l18-8M158 150l-16-8M112 204q16-10 32 0M80 186q-22 4-30-10" fill="none"/>
+  </g>
+  <rect x="24" y="148" width="40" height="22" rx="11" fill="none" stroke="#e9a934" stroke-width="9" transform="rotate(-30 44 159)"/>
+  <path d="M66 136l8-10M56 128l-2-12" fill="none" stroke="#263248" stroke-width="4" stroke-linecap="round"/>
+</svg>

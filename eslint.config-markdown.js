@@ -25,7 +25,7 @@ export default [
       ...preferences.configs.standard.rules,
       "markdown/no-duplicate-headings": "error",
       "markdown/no-bare-urls": "error",
-      "markdown/no-html": "error",
+      "markdown/no-html": ["error", { allowed: ["img"] }],
       "markdown-preferences/no-heading-trailing-punctuation": "error",
       // Allow both hard-break forms and unaligned tables, matching sibling plugins.
       "markdown-preferences/hard-linebreak-style": "off",
