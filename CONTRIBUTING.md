@@ -26,7 +26,7 @@ Test, Lint, and Package are separate CI workflows. The Test matrix uses explicit
 
 ## Benchmarks
 
-`npm run bench` generates synthetic documentation trees of 100, 1,000, and 5,000 pages in temporary directories and measures them with [tinybench](https://github.com/tinylibs/tinybench); `npm run bench:quick` uses 50 and 200 pages and fewer iterations. Four shapes cover common layouts: `wide` (README links to every page), `chain` (each page links only to the next), `random` (three random links per page and about 10% orphans), and `nested` (directories up to five levels deep linked through their README pages). Pages include front matter, code blocks, tables, images, external links, and inline, reference, and HTML anchor links. Before measuring, each run lints the tree once and fails if a planned orphan is not reported.
+`npm run bench` generates synthetic documentation trees of 100, 1,000, and 5,000 pages in temporary directories and measures them with [tinybench](https://github.com/tinylibs/tinybench); `npm run bench:quick` uses 50 and 200 pages and fewer iterations. Trees come in four shapes: `wide` (README links to every page), `chain` (each page links to the next), `random` (three random links per page, about 10% orphans), and `nested` (directories up to five levels deep). Each run first lints the tree and fails if a planned orphan is not reported.
 
 The benchmarks measure a cold graph build, a throttled sweep without changes, reachability alone, parsing one page, live updates with unchanged and changed text, and full ESLint runs over the `random` tree with and without the rule, reporting the rule's overhead. Output is a Markdown table with medians, means with margin of error, and per-page cost; add `--json` for machine-readable results, `--sizes=100,1000` or `--shapes=random,nested` to narrow a run, and `--no-eslint` to skip the ESLint runs.
 
@@ -34,7 +34,15 @@ To compare a change, run the same command on the base branch and the change on a
 
 ## Tests
 
-Tests use `node --test` under `test/`. `test/plugin.test.js` covers the public export, `test/rule.test.js` lints the fixture trees in `test/fixtures/` (`links`, `defaults`, `options`, `missing-root`) with the real ESLint API through `test-support/lint.js` and runs `RuleTester`, clearing the per-process graph before each test because linted text updates it, `test/graph.test.js` covers link extraction, target resolution, discovery, permissions, live text, and throttled sweeps with an injected clock (`setClock`) in temporary trees, `test/package.test.js` packs the archive, inspects its contents, installs it in a temporary consumer, and runs the real ESLint CLI, and `test/workflow-names.test.js` covers the display-name checker. Aim for coverage close to 100% of project-owned runtime code with meaningful behavioral tests, including errors and edge cases, and inspect `npm run test:coverage` output rather than excluding real code.
+Tests use `node --test` under `test/`:
+
+- `test/plugin.test.js` covers the public export.
+- `test/rule.test.js` lints the fixture trees in `test/fixtures/` (`links`, `defaults`, `options`, `missing-root`) with the real ESLint API through `test-support/lint.js` and runs `RuleTester`, clearing the per-process graph before each test because linted text updates it.
+- `test/graph.test.js` covers link extraction, target resolution, discovery, permissions, live text, and throttled sweeps with an injected clock (`setClock`) in temporary trees.
+- `test/package.test.js` packs the archive, inspects its contents, installs it in a temporary consumer, and runs the real ESLint CLI.
+- `test/workflow-names.test.js` covers the display-name checker.
+
+Aim for coverage close to 100% of project-owned runtime code with meaningful behavioral tests, including errors and edge cases, and inspect `npm run test:coverage` output rather than excluding real code.
 
 ## Pull Requests
 

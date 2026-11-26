@@ -6,7 +6,15 @@ Read [Contributing](CONTRIBUTING.md) and [Design](DESIGN.md) before changing cod
 
 The plugin provides `markdown-links-unlinked/no-unlinked-pages`, which reports Markdown pages not reachable by following local links from root pages. It does not check missing link targets or fragments, unused assets, or site-navigation configs; those belong to other plugins or are non-goals. The `recommended` config enables it as an error.
 
-The entry point is `src/index.js`, the rule is `src/rules/no-unlinked-pages.js`, discovery and the cached link graph are `src/graph.js`, and link extraction is `src/links.js`. Tests are in `test/`, fixture trees in `test/fixtures/`, and shared helpers in `test-support/`. Use public ESLint, `@eslint/markdown`, and mdast APIs only: no private ESLint internals, upstream internal imports, or global dependency mutation. Discovery is read-only, diagnostics must be deterministic regardless of filesystem order, and link parsing must use a Markdown parser rather than ad hoc regular expressions over whole documents. Edges come only from links a reader can follow (inline links, resolved link references, HTML `<a href>`); images, unused definitions, and front matter never count. Path matching is case-sensitive and symbolic links are not followed. Build the cross-file graph once per process, keyed by root directory and options; update it from each linted page's `sourceCode.text` with the plugin's own parser, never from ESLint's language-dependent tree; and sweep the file system for outside changes at most every `SWEEP_INTERVAL`, parsing only pages whose modification time or size changed. Do not stat every page for each linted file. Documentation lint dogfoods the rule, so every root document must stay linked from README.
+The entry point is `src/index.js`, the rule is `src/rules/no-unlinked-pages.js`, discovery and the cached link graph are `src/graph.js`, and link extraction is `src/links.js`. Tests are in `test/`, fixture trees in `test/fixtures/`, and shared helpers in `test-support/`. Invariants:
+
+- Use public ESLint, `@eslint/markdown`, and mdast APIs only: no private ESLint internals, upstream internal imports, or global dependency mutation.
+- Discovery is read-only, and diagnostics are deterministic regardless of filesystem order.
+- Parse links with a Markdown parser, not ad hoc regular expressions over whole documents.
+- Edges come only from links a reader can follow (inline links, resolved link references, HTML `<a href>`); images, unused definitions, and front matter never count.
+- Path matching is case-sensitive, and symbolic links are not followed.
+- Build the cross-file graph once per process, keyed by root directory and options; update it from each linted page's `sourceCode.text` with the plugin's own parser, never from ESLint's language-dependent tree; and sweep for outside changes at most every `SWEEP_INTERVAL`, parsing only changed pages. Do not stat every page for each linted file.
+- Documentation lint dogfoods the rule, so every root document must stay linked from README.
 
 ## Setup and Validation
 
