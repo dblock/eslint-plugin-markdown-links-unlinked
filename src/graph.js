@@ -51,7 +51,7 @@ export function getPageGraph(rootDir, options, live) {
     parsedLive = sweep(rootDir, options, state, live);
   }
   if (live && !parsedLive) applyLive(rootDir, options, state, live);
-  state.graph ??= buildGraph(state, options);
+  state.graph ??= buildGraph(state.pages, options);
   return state.graph;
 }
 
@@ -190,15 +190,21 @@ function read(path) {
   }
 }
 
-function buildGraph(state, { roots: rootPatterns, extensions }) {
-  const pages = new Set(state.pages.keys());
+/**
+ * Computes which pages are reachable from the roots by a breadth-first search over the links.
+ * @param {Map<string, {links: string[]}>} pageLinks Each discovered page's link destinations.
+ * @param {{roots: string[], extensions: string[]}} options Normalized options.
+ * @returns {PageGraph} The page graph.
+ */
+export function buildGraph(pageLinks, { roots: rootPatterns, extensions }) {
+  const pages = new Set(pageLinks.keys());
   const isRoot = picomatch(rootPatterns, { dot: true });
   const roots = [...pages].filter((page) => isRoot(page));
   const reachable = new Set(roots);
   const queue = [...roots];
   while (queue.length > 0) {
     const page = queue.shift();
-    for (const destination of state.pages.get(page).links) {
+    for (const destination of pageLinks.get(page).links) {
       for (const target of resolveTargets(page, destination, pages, extensions)) {
         if (!reachable.has(target)) {
           reachable.add(target);

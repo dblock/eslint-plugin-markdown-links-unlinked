@@ -14,6 +14,8 @@ Use Node.js `26.13.0` from `.nvmrc`. The package supports Node.js `^22.13.0 || >
 
 Run `npm ci`, `npm test`, `npm run lint`, and `npm run package:check` (already included in `npm test`) before every commit and push; use `npm run test:coverage` for coverage and aim close to 100% of runtime code with meaningful tests. Validate the real `npm pack` archive in a temporary consumer when packaging or exports change; `PACKAGE_ARCHIVE` selects an existing archive and an empty value means fresh packing.
 
+Benchmarks live in `bench/`: `npm run bench` (100, 1,000, and 5,000 pages) and `npm run bench:quick`, which the Test workflow's Benchmarks job runs without thresholds. Keep them working when internals change, and report measured before-and-after medians from the same machine and command for performance changes.
+
 Keep Test, Lint, and Package workflows separate, with explicit inline `matrix.entry` records and no `include` or `exclude`, and keep Coveralls coverage. `npm run lint` covers source, embedded JavaScript, Markdown structure, prose, spelling, single-line paragraphs, title-case headings, and workflow display names.
 
 ## Documentation and Versions

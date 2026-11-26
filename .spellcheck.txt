@@ -12,6 +12,7 @@ nowrap
 OIDC
 picomatch
 SVG
+tinybench
 TOML
 unlinked
 Vite

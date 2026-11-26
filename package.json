@@ -27,7 +27,9 @@
     "lint:code": "eslint .",
     "lint:markdown": "eslint --config eslint.config-markdown.js \"*.md\"",
     "lint:workflows": "node scripts/check-workflow-names.js",
-    "package:check": "node --test test/package.test.js"
+    "package:check": "node --test test/package.test.js",
+    "bench": "node bench/run.js",
+    "bench:quick": "node bench/run.js --quick"
   },
   "peerDependencies": {
     "@eslint/markdown": "^8.0.0 || ^9.0.0",
@@ -42,6 +44,7 @@
     "eslint-plugin-markdown-preferences": "^0.43.0",
     "eslint-plugin-markdown-preferences-paragraph": "^0.2.0",
     "eslint-plugin-prose-spellcheck": "^0.1.2",
+    "tinybench": "^6.2.5",
     "title-case": "^4.3.2",
     "yaml": "^2.9.1"
   },
