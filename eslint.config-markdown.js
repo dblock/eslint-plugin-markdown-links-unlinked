@@ -3,6 +3,7 @@ import preferences from "eslint-plugin-markdown-preferences";
 import paragraph from "eslint-plugin-markdown-preferences-paragraph";
 import proseSpellcheck from "eslint-plugin-prose-spellcheck";
 import documentation from "./scripts/documentation-plugin.js";
+import unlinked from "./src/index.js";
 
 export default [
   {
@@ -16,6 +17,7 @@ export default [
       paragraph,
       "prose-spellcheck": proseSpellcheck,
       documentation,
+      "markdown-links-unlinked": unlinked,
     },
     language: "markdown/gfm",
     rules: {
@@ -40,6 +42,8 @@ export default [
       }],
       "documentation/first-heading": "error",
       "documentation/final-newline": "error",
+      // Every documentation page must be reachable from the README; fixtures are separate trees.
+      "markdown-links-unlinked/no-unlinked-pages": ["error", { ignore: ["test/fixtures/**"] }],
     },
   },
 ];

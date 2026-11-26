@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { execFileSync, spawnSync } from "node:child_process";
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { basename, join } from "node:path";
 import process from "node:process";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
@@ -31,11 +31,11 @@ test("the packed archive installs and loads in a consumer", async () => {
       archive = join(directory, packed.filename);
       paths = packed.files.map((file) => file.path);
     }
-    for (const path of ["package.json", "src/index.js", "README.md", "LICENSE"]) {
+    for (const path of ["package.json", "src/index.js", "src/graph.js", "src/links.js", "src/rules/no-unlinked-pages.js", "README.md", "LICENSE"]) {
       assert.ok(paths.includes(path), `The archive must include ${path}.`);
     }
     assert.ok(paths.every((path) =>
-      !/^(?:test|scripts|node_modules|coverage)\//u.test(path) && !path.endsWith(".tgz")
+      !/^(?:test|test-support|scripts|node_modules|coverage)\//u.test(path) && !path.endsWith(".tgz")
     ), "The archive must exclude development and generated files.");
     await writeFile(join(directory, "package.json"), JSON.stringify({
       private: true,
@@ -56,13 +56,25 @@ export default [
   { files: ["**/*.md"], ...unlinked.configs.recommended },
 ];
 `);
-    await writeFile(join(directory, "README.md"), "# Consumer\n");
+    await writeFile(join(directory, "README.md"), "# Consumer\n\n[Guide](guide.md)\n");
+    await writeFile(join(directory, "guide.md"), "# Guide\n");
+    await writeFile(join(directory, "orphan.md"), "# Orphan\n");
     const result = spawnSync(process.execPath, [
-      join(directory, "node_modules/eslint/bin/eslint.js"), "--format", "json", "README.md",
+      join(directory, "node_modules/eslint/bin/eslint.js"), "--format", "json", "README.md", "guide.md", "orphan.md",
     ], { cwd: directory, encoding: "utf8" });
     assert.ifError(result.error);
-    assert.equal(result.status, 0, result.stderr || result.stdout);
-    assert.deepEqual(JSON.parse(result.stdout)[0].messages, []);
+    assert.equal(result.status, 1, result.stderr || result.stdout);
+    const messages = Object.fromEntries(JSON.parse(result.stdout).map((file) => [
+      basename(file.filePath),
+      file.messages.map((message) => `${message.ruleId} ${message.line}:${message.column} ${message.message}`),
+    ]));
+    assert.deepEqual(messages, {
+      "README.md": [],
+      "guide.md": [],
+      "orphan.md": [
+        "markdown-links-unlinked/no-unlinked-pages 1:1 This page is not linked from any root page (README.md).",
+      ],
+    });
   } finally {
     await rm(directory, { recursive: true, force: true });
   }

@@ -18,6 +18,12 @@ test("exports plugin metadata from the package manifest", () => {
 test("exports a recommended config that registers the plugin", () => {
   assert.equal(plugin.configs.recommended.name, "markdown-links-unlinked/recommended");
   assert.equal(plugin.configs.recommended.plugins["markdown-links-unlinked"], plugin);
+  assert.deepEqual(plugin.configs.recommended.rules, { "markdown-links-unlinked/no-unlinked-pages": "error" });
+});
+
+test("exports the no-unlinked-pages rule for Markdown languages", () => {
+  assert.deepEqual(Object.keys(plugin.rules), ["no-unlinked-pages"]);
+  assert.deepEqual(plugin.rules["no-unlinked-pages"].meta.languages, ["markdown/*"]);
 });
 
 test("loads in ESLint with the Markdown language", async () => {
