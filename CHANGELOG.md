@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.1.0 (Next)
+## 0.1.0 (2026/11/26)
 
 - [#2](https://github.com/dblock/eslint-plugin-markdown-links-unlinked/pull/2): Added the `no-unlinked-pages` rule - [@dblock](https://github.com/dblock).
 - [#5](https://github.com/dblock/eslint-plugin-markdown-links-unlinked/pull/5): Added an original editable lonely-page logo, 160-pixel README placement, artwork maintenance guidance, and a packaged-asset check - [@dblock](https://github.com/dblock).
@@ -10,4 +10,3 @@
 - [#10](https://github.com/dblock/eslint-plugin-markdown-links-unlinked/pull/10): Simplified the README for users, with a clearer `allow` and `ignore` distinction, a Limitations list, and installation ready for the 0.1.0 release, and made the contributor documentation easier to scan - [@dblock](https://github.com/dblock).
 - [#11](https://github.com/dblock/eslint-plugin-markdown-links-unlinked/pull/11): Added release automation with npm-package-release 0.4.0 and npm Trusted Publishing, including name reservation with `npr bootstrap` and a simulated release test - [@dblock](https://github.com/dblock).
 - [#12](https://github.com/dblock/eslint-plugin-markdown-links-unlinked/pull/12): Fixed the packed-consumer test under npm 12, which the release workflow uses, and validated the package with npm 12 in CI - [@dblock](https://github.com/dblock).
-- Your contribution here.
