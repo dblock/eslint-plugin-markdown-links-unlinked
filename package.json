@@ -44,6 +44,7 @@
     "eslint-plugin-markdown-preferences": "^0.43.0",
     "eslint-plugin-markdown-preferences-paragraph": "^0.2.0",
     "eslint-plugin-prose-spellcheck": "^0.1.2",
+    "npm-package-release": "0.4.0",
     "tinybench": "^6.2.5",
     "title-case": "^4.3.2",
     "yaml": "^2.9.1"
