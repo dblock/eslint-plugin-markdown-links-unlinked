@@ -40,6 +40,7 @@ Tests use `node --test` under `test/`:
 - `test/rule.test.js` lints the fixture trees in `test/fixtures/` (`links`, `defaults`, `options`, `missing-root`) with the real ESLint API through `test-support/lint.js` and runs `RuleTester`, clearing the per-process graph before each test because linted text updates it.
 - `test/graph.test.js` covers link extraction, target resolution, discovery, permissions, live text, and throttled sweeps with an injected clock (`setClock`) in temporary trees.
 - `test/package.test.js` packs the archive, inspects its contents, installs it in a temporary consumer, and runs the real ESLint CLI.
+- `test/release.test.js` runs `createReleaseWorkflow` from `npr.config.js` with npm-package-release's simulated registry and release host against a local Git remote, skipping below that tool's Node.js minimum.
 - `test/workflow-names.test.js` covers the display-name checker.
 
 Aim for coverage close to 100% of project-owned runtime code with meaningful behavioral tests, including errors and edge cases, and inspect `npm run test:coverage` output rather than excluding real code.
@@ -50,6 +51,6 @@ Start changes on a `<username>/<topic>` branch in the existing checkout, for exa
 
 Update affected documentation. Add CHANGELOG entries for features, improvements, and fixes, but not minor typos or the initial scaffold, as `- [#123](https://github.com/dblock/eslint-plugin-markdown-links-unlinked/pull/123): Description - [@dblock](https://github.com/dblock).` above `- Your contribution here.` in the Next section. Features increment the minor version (resetting patch for `0.x`); ask before a major bump. Keep `package.json` and `package-lock.json` synchronized.
 
-Include your tool's AI co-author trailer in AI-assisted commits, and disclose AI authorship on behalf of `@dblock` in PR descriptions and comments. Use closing issue references. Do not merge, publish, or tag without explicit authorization; see [Releasing](RELEASING.md).
+Include your tool's AI co-author trailer in AI-assisted commits, and disclose AI authorship on behalf of `@dblock` in PR descriptions and comments. Use closing issue references. Do not merge, publish, tag, or dispatch the release workflow without explicit authorization. The release workflow is the one exception to pull-request-only changes: it pushes release and next-development commits and tags directly to `master`; see [Releasing](RELEASING.md).
 
 After a PR merges, fetch with pruning, verify the merge on GitHub, and remove only clean, no-longer-needed topic branches and worktrees.
