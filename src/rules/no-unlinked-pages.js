@@ -52,7 +52,7 @@ export default {
 
     return {
       root(node) {
-        const graph = getPageGraph(rootDir, options);
+        const graph = getPageGraph(rootDir, options, { page, text: context.sourceCode.text });
         if (!graph.pages.has(page) || graph.reachable.has(page)) return;
         const roots = options.roots.join(", ");
         context.report({

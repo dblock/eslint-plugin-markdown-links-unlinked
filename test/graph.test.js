@@ -4,9 +4,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import process from "node:process";
 import test from "node:test";
-import { clearPageGraphCache, getPageGraph, resolveTargets } from "../src/graph.js";
+import { clearPageGraphCache, getPageGraph, resolveTargets, setClock, SWEEP_INTERVAL } from "../src/graph.js";
 import { extractLinks } from "../src/links.js";
-import { lintTree, reported } from "../test-support/lint.js";
 
 const options = { roots: ["README.md"], ignore: [], extensions: [".md"] };
 const posixOnly = process.platform === "win32" || process.getuid?.() === 0
@@ -66,32 +65,121 @@ test("skips node_modules and .git and does not follow symbolic links", { skip: p
   }
 });
 
-test("reuses the graph until a page or directory changes", async () => {
+/** Runs a test body with a manual clock and a fresh graph cache. */
+async function withClock(body) {
+  let time = 0;
+  const restore = setClock(() => time);
   clearPageGraphCache();
+  try {
+    await body({ advance: (milliseconds = SWEEP_INTERVAL) => { time += milliseconds; } });
+  } finally {
+    restore();
+    clearPageGraphCache();
+  }
+}
+
+const unreachable = (graph) => [...graph.pages].filter((page) => !graph.reachable.has(page)).sort();
+
+test("sweeps for outside changes at most once per interval", () => withClock(async ({ advance }) => {
   const directory = await tree({ "README.md": "# Root\n", "a.md": "# A\n" });
   try {
-    assert.deepEqual(reported(await lintTree(directory)), ["a.md"]);
     const graph = getPageGraph(directory, options);
-    assert.equal(getPageGraph(directory, options), graph, "An unchanged tree reuses the graph.");
+    assert.deepEqual(unreachable(graph), ["a.md"]);
     assert.notEqual(getPageGraph(directory, { ...options, ignore: ["x"] }), graph, "Options are part of the key.");
 
     await writeFile(join(directory, "README.md"), "# Root\n\n[A](a.md)\n");
-    assert.deepEqual(reported(await lintTree(directory)), [], "A modified page rebuilds the graph.");
-
     await writeFile(join(directory, "b.md"), "# B\n");
-    assert.deepEqual(reported(await lintTree(directory)), ["b.md"], "An added page rebuilds the graph.");
+    advance(SWEEP_INTERVAL - 1);
+    assert.equal(getPageGraph(directory, options), graph, "Changes wait for the next sweep.");
+
+    advance(1);
+    const swept = getPageGraph(directory, options);
+    assert.deepEqual(unreachable(swept), ["b.md"], "A modified page is parsed again and an added page is found.");
+
+    advance();
+    assert.equal(getPageGraph(directory, options), swept, "A sweep without changes keeps the graph.");
 
     await mkdir(join(directory, "docs"));
     await writeFile(join(directory, "docs/c.md"), "# C\n");
-    assert.deepEqual(reported(await lintTree(directory)), ["b.md", "docs/c.md"], "A page in a new directory is found.");
-
     await writeFile(join(directory, "a.md"), "# A\n\n[B](b.md)\n");
+    advance();
+    assert.deepEqual(unreachable(getPageGraph(directory, options)), ["docs/c.md"], "Pages in new directories are found.");
+
     await unlink(join(directory, "docs/c.md"));
-    assert.deepEqual(reported(await lintTree(directory)), [], "Removed pages and new links are picked up.");
+    advance();
+    assert.deepEqual([...getPageGraph(directory, options).pages].sort(), ["README.md", "a.md", "b.md"], "Removed pages are dropped.");
   } finally {
     await rm(directory, { recursive: true, force: true });
   }
-});
+}));
+
+test("applies the linted page's text immediately", () => withClock(async ({ advance }) => {
+  const directory = await tree({ "README.md": "# Root\n", "a.md": "# A\n" });
+  try {
+    const built = getPageGraph(directory, options, { page: "README.md", text: "[A](a.md)" });
+    assert.deepEqual(unreachable(built), [], "The first build parses the linted page from its text.");
+
+    const same = getPageGraph(directory, options, { page: "README.md", text: "# Root\n\nSee [A](a.md).\n" });
+    assert.equal(same, built, "Text with the same links keeps the graph.");
+
+    const edited = getPageGraph(directory, options, { page: "README.md", text: "# Root\n" });
+    assert.deepEqual(unreachable(edited), ["a.md"], "Removing a link applies without a sweep.");
+
+    advance();
+    assert.deepEqual(unreachable(getPageGraph(directory, options)), ["a.md"], "Linted text persists until the file changes on disk.");
+
+    await writeFile(join(directory, "README.md"), "# Root\n\n[A](a.md)\n");
+    advance();
+    const saved = getPageGraph(directory, options, { page: "README.md", text: "[A](a.md)" });
+    assert.deepEqual(unreachable(saved), [], "A sweep parses the linted page from its text when its file changed.");
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+}));
+
+test("adds a linted page that appeared since the last sweep only when discovery would find it", () => withClock(async () => {
+  const directory = await tree({ "README.md": "# Root\n" });
+  try {
+    getPageGraph(directory, options);
+    await writeFile(join(directory, "new.md"), "# New\n");
+    await mkdir(join(directory, "node_modules/pkg"), { recursive: true });
+    await writeFile(join(directory, "node_modules/pkg/x.md"), "# X\n");
+    await writeFile(join(directory, "notes.txt"), "text\n");
+    await mkdir(join(directory, "drafts"));
+    await writeFile(join(directory, "drafts/d.md"), "# D\n");
+    await mkdir(join(directory, "sub"));
+
+    const graph = getPageGraph(directory, options, { page: "new.md", text: "# New\n" });
+    assert.deepEqual(unreachable(graph), ["new.md"], "A new page on disk is added and reported.");
+    const ignoring = { ...options, ignore: ["drafts/**"] };
+    getPageGraph(directory, ignoring);
+    for (const [page, settings] of [
+      ["unsaved.md", options],
+      ["node_modules/pkg/x.md", options],
+      ["notes.txt", options],
+      ["drafts/d.md", ignoring],
+      ["sub", options],
+      ["sub/missing.md", options],
+      ["README.md/x.md", options],
+    ]) {
+      const before = getPageGraph(directory, settings);
+      assert.equal(getPageGraph(directory, settings, { page, text: "[R](README.md)" }), before, `${page} is not a page.`);
+    }
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+}));
+
+test("does not add a linted page reached through a symbolic link", { skip: process.platform === "win32" && "symbolic links need privileges on Windows" }, () => withClock(async () => {
+  const directory = await tree({ "README.md": "# Root\n", "target/t.md": "# T\n" });
+  try {
+    await symlink(join(directory, "target"), join(directory, "linked"));
+    const before = getPageGraph(directory, options);
+    assert.equal(getPageGraph(directory, options, { page: "linked/t.md", text: "# T\n" }), before);
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+}));
 
 test("a missing root directory yields no pages", () => {
   const graph = getPageGraph(join(tmpdir(), "markdown-links-unlinked-missing"), options);
@@ -100,21 +188,25 @@ test("a missing root directory yields no pages", () => {
 });
 
 test("unreadable directories and pages are skipped", { skip: posixOnly }, async () => {
+  clearPageGraphCache();
   const directory = await tree({
-    "README.md": "[a](a.md) [b](locked/b.md)",
+    "README.md": "[a](a.md) [b](locked/b.md) [s](listed/s.md)",
     "a.md": "[c](c.md)",
     "c.md": "# C",
     "locked/b.md": "# B",
+    "listed/s.md": "# S",
   });
   try {
     await chmod(join(directory, "a.md"), 0o000);
     await chmod(join(directory, "locked"), 0o000);
+    await chmod(join(directory, "listed"), 0o444);
     const graph = getPageGraph(directory, options);
     assert.deepEqual([...graph.pages].sort(), ["README.md", "a.md", "c.md"]);
     assert.deepEqual([...graph.reachable].sort(), ["README.md", "a.md"]);
   } finally {
     await chmod(join(directory, "a.md"), 0o644);
     await chmod(join(directory, "locked"), 0o755);
+    await chmod(join(directory, "listed"), 0o755);
     await rm(directory, { recursive: true, force: true });
   }
 });

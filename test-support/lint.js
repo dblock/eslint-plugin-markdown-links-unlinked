@@ -7,26 +7,41 @@ import plugin from "../src/index.js";
 export const fixtures = fileURLToPath(new URL("../test/fixtures/", import.meta.url));
 
 /**
- * Lints a directory tree with the real ESLint API and returns the diagnostics for each linted
- * file, keyed by its `/`-separated path relative to the directory.
- * @param {string} cwd Directory to lint, used as ESLint's working directory.
+ * Creates an ESLint instance that lints Markdown files with the recommended config.
+ * @param {string} cwd ESLint's working directory.
  * @param {object} [options] Rule options; omitted to use the recommended config's defaults.
  * @param {object} [settings] Extra settings.
  * @param {string[]} [settings.files] Globs ESLint lints with the Markdown language.
- * @returns {Promise<Record<string, string[]>>} Messages for each file.
+ * @param {string} [settings.language] Markdown language.
+ * @returns {ESLint} The ESLint instance.
  */
-export async function lintTree(cwd, options, { files = ["**/*.md"] } = {}) {
-  const eslint = new ESLint({
+export function createESLint(cwd, options, { files = ["**/*.md"], language = "markdown/gfm" } = {}) {
+  return new ESLint({
     cwd,
     overrideConfigFile: true,
     overrideConfig: [
-      { files, plugins: { markdown }, language: "markdown/gfm" },
+      { files, plugins: { markdown }, language },
       { files, ...plugin.configs.recommended },
       ...(options
         ? [{ files, rules: { "markdown-links-unlinked/no-unlinked-pages": ["error", options] } }]
         : []),
     ],
   });
+}
+
+/**
+ * Lints a directory tree with the real ESLint API and returns the diagnostics for each linted
+ * file, keyed by its `/`-separated path relative to the directory.
+ * @param {string} cwd Directory to lint, used as ESLint's working directory.
+ * @param {object} [options] Rule options; omitted to use the recommended config's defaults.
+ * @param {object} [settings] Extra settings.
+ * @param {string[]} [settings.files] Globs ESLint lints with the Markdown language.
+ * @param {string} [settings.language] Markdown language.
+ * @returns {Promise<Record<string, string[]>>} Messages for each file.
+ */
+export async function lintTree(cwd, options, settings = {}) {
+  const { files = ["**/*.md"] } = settings;
+  const eslint = createESLint(cwd, options, settings);
   const results = await eslint.lintFiles(files);
   const messages = {};
   for (const result of results) {

@@ -1,10 +1,14 @@
 import assert from "node:assert/strict";
 import { join } from "node:path";
-import test from "node:test";
+import test, { beforeEach } from "node:test";
 import { ESLint, RuleTester } from "eslint";
 import markdown from "@eslint/markdown";
+import { clearPageGraphCache } from "../src/graph.js";
 import plugin from "../src/index.js";
-import { fixtures, lintTree, reported } from "../test-support/lint.js";
+import { createESLint, fixtures, lintTree, reported } from "../test-support/lint.js";
+
+// Linted text updates the per-process graph, so start each test from the files on disk.
+beforeEach(() => clearPageGraphCache());
 
 const unlinked = "1:1 This page is not linked from any root page (README.md).";
 
@@ -28,6 +32,22 @@ test("follows every kind of local link and reports only unreachable pages", asyn
   ]) {
     assert.deepEqual(messages[reachable], [], `${reachable} should be reachable.`);
   }
+});
+
+test("finds the same links with the CommonMark and GFM languages", async () => {
+  const gfm = await lintTree(join(fixtures, "links"));
+  clearPageGraphCache();
+  const commonmark = await lintTree(join(fixtures, "links"), undefined, { language: "markdown/commonmark" });
+  assert.deepEqual(commonmark, gfm);
+});
+
+test("counts the links in unsaved text immediately", async () => {
+  const eslint = createESLint(join(fixtures, "defaults"));
+  const [before] = await eslint.lintFiles(["c.md"]);
+  assert.equal(before.messages.length, 1, "c.md is unlinked on disk.");
+  await eslint.lintText("# Root\n\n[C](c.md)\n", { filePath: "README.md" });
+  const [after] = await eslint.lintFiles(["c.md"]);
+  assert.deepEqual(after.messages, [], "An unsaved link from the root reaches c.md.");
 });
 
 test("allows default pages, terminates cycles, and ignores non-page extensions", async () => {
