@@ -2,6 +2,7 @@
 
 ## 0.1.1 (Next)
 
+- [#13](https://github.com/dblock/eslint-plugin-markdown-links-unlinked/pull/13): Listed the packed archive with `tar` instead of parsing `npm pack --json`, so the packed-consumer test passes under any npm without a separate npm 12 CI job - [@dblock](https://github.com/dblock).
 - Your contribution here.
 
 ## 0.1.0 (2026/11/26)

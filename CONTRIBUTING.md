@@ -22,7 +22,7 @@ Development uses `@eslint/markdown` 9. The root `overrides` let the development-
 
 Keep human-readable Markdown headings and YAML display names in title case, preserving proper names, acronyms, and code identifiers. Keep each Markdown paragraph on one source line. Add reviewed vocabulary to `.spellcheck.txt` and fix typos instead of suppressing them.
 
-Test, Lint, and Package are separate CI workflows. The Test matrix uses explicit inline `matrix.entry` records, without `include` or `exclude`, pairing the minimum and current Node versions with both ESLint majors and both `@eslint/markdown` majors; a Coverage job reports to Coveralls. Package validates the packed consumer on Linux, macOS, and Windows, and on Linux with npm 12.2.3, the npm version the release workflow uses, because npm 11 and 12 print different `npm pack --json` shapes. No Danger checks are configured. Each workflow's `concurrency` group cancels superseded pull request runs but never `master` runs.
+Test, Lint, and Package are separate CI workflows. The Test matrix uses explicit inline `matrix.entry` records, without `include` or `exclude`, pairing the minimum and current Node versions with both ESLint majors and both `@eslint/markdown` majors; a Coverage job reports to Coveralls. Package validates the packed consumer on Linux, macOS, and Windows. The packed-consumer test lists the archive with `tar` instead of parsing `npm pack --json`, whose output differs between npm 11 and 12, so it also passes under the release workflow's npm. No Danger checks are configured. Each workflow's `concurrency` group cancels superseded pull request runs but never `master` runs.
 
 ## Benchmarks
 

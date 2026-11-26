@@ -14,7 +14,7 @@ concurrency:
 
 jobs:
   package:
-    name: Validate Package on ${{ matrix.entry.os }}${{ matrix.entry.npm && format(' with npm {0}', matrix.entry.npm) || '' }}
+    name: Validate Package on ${{ matrix.entry.os }}
     runs-on: ${{ matrix.entry.os }}
     strategy:
       fail-fast: false
@@ -23,7 +23,6 @@ jobs:
           - { os: ubuntu-latest }
           - { os: macos-latest }
           - { os: windows-latest }
-          - { os: ubuntu-latest, npm: 12.2.3 }
     steps:
       - name: Check Out Source
         uses: actions/checkout@v7.0.1
@@ -32,9 +31,6 @@ jobs:
         with:
           node-version-file: .nvmrc
           cache: npm
-      - name: Select npm Version
-        if: matrix.entry.npm
-        run: npm install --global "npm@${{ matrix.entry.npm }}"
       - name: Install Dependencies
         run: npm ci
       - name: Validate Packed Consumer
