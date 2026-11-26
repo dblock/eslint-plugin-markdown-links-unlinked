@@ -9,6 +9,20 @@ export const DEFAULT_OPTIONS = Object.freeze({
   extensions: Object.freeze([".md"]),
 });
 
+/** @type {Map<string, (path: string) => boolean>} */
+const allowMatchers = new Map();
+
+/** Returns a cached matcher for `allow` patterns, compiled once per distinct list. */
+function allowMatcher(allow) {
+  const key = JSON.stringify(allow);
+  let matcher = allowMatchers.get(key);
+  if (!matcher) {
+    matcher = picomatch(allow, { dot: true });
+    allowMatchers.set(key, matcher);
+  }
+  return matcher;
+}
+
 const patterns = { type: "array", items: { type: "string", minLength: 1 }, uniqueItems: true };
 
 /** @type {import("eslint").Rule.RuleModule} */
@@ -48,7 +62,7 @@ export default {
     const path = relative(rootDir, context.filename);
     if (path === "" || path === ".." || path.startsWith(`..${sep}`) || isAbsolute(path)) return {};
     const page = path.split(sep).join("/");
-    if (picomatch(options.allow, { dot: true })(page)) return {};
+    if (allowMatcher(options.allow)(page)) return {};
 
     return {
       root(node) {
