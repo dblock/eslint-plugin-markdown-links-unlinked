@@ -22,7 +22,7 @@ Development uses `@eslint/markdown` 9. The root `overrides` let the development-
 
 Keep human-readable Markdown headings and YAML display names in title case, preserving proper names, acronyms, and code identifiers. Keep each Markdown paragraph on one source line. Add reviewed vocabulary to `.spellcheck.txt` and fix typos instead of suppressing them.
 
-Test, Lint, and Package are separate CI workflows. The Test matrix uses explicit inline `matrix.entry` records, without `include` or `exclude`, pairing the minimum and current Node versions with both ESLint majors and both `@eslint/markdown` majors; a Coverage job reports to Coveralls. Package validates the packed consumer on Linux, macOS, and Windows. No Danger checks are configured.
+Test, Lint, and Package are separate CI workflows. The Test matrix uses explicit inline `matrix.entry` records, without `include` or `exclude`, pairing the minimum and current Node versions with both ESLint majors and both `@eslint/markdown` majors; a Coverage job reports to Coveralls. Package validates the packed consumer on Linux, macOS, and Windows. No Danger checks are configured. Each workflow's `concurrency` group cancels superseded pull request runs but never `master` runs.
 
 ## Benchmarks
 

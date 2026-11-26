@@ -16,7 +16,7 @@ Run `npm ci`, `npm test`, `npm run lint`, and `npm run package:check` (already i
 
 Benchmarks live in `bench/`: `npm run bench` (100, 1,000, and 5,000 pages) and `npm run bench:quick`, which the Test workflow's Benchmarks job runs without thresholds. Keep them working when internals change, and report measured before-and-after medians from the same machine and command for performance changes.
 
-Keep Test, Lint, and Package workflows separate, with explicit inline `matrix.entry` records and no `include` or `exclude`, and keep Coveralls coverage. `npm run lint` covers source, embedded JavaScript, Markdown structure, prose, spelling, single-line paragraphs, title-case headings, and workflow display names.
+Keep Test, Lint, and Package workflows separate, with explicit inline `matrix.entry` records and no `include` or `exclude`, and keep Coveralls coverage. `npm run lint` covers source, embedded JavaScript, Markdown structure, prose, spelling, single-line paragraphs, title-case headings, and workflow display names. Each workflow's `concurrency` group cancels superseded pull request runs but never `master` runs.
 
 ## Documentation and Versions
 
