@@ -55,3 +55,26 @@ jobs:
         with:
           file: coverage/lcov.info
           format: lcov
+
+  benchmarks:
+    name: Benchmarks on Node ${{ matrix.entry.node }} with ESLint ${{ matrix.entry.eslint }}
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        entry:
+          - { node: "26.13.0", eslint: "10.15.0" }
+    steps:
+      - name: Check Out Source
+        uses: actions/checkout@v7.0.1
+      - name: Set Up Node
+        uses: actions/setup-node@v7.1.0
+        with:
+          node-version: ${{ matrix.entry.node }}
+          cache: npm
+      - name: Install Dependencies
+        run: npm ci
+      - name: Select ESLint Version
+        run: npm install --no-save --package-lock=false eslint@${{ matrix.entry.eslint }}
+      - name: Run Quick Benchmarks
+        shell: bash
+        run: npm run --silent bench:quick | tee -a "$GITHUB_STEP_SUMMARY"
