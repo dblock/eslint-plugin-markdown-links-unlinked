@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { chmod, mkdir, mkdtemp, rm, symlink, unlink, writeFile } from "node:fs/promises";
+import { chmod, mkdir, mkdtemp, rm, symlink, unlink, utimes, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import process from "node:process";
@@ -108,6 +108,46 @@ test("sweeps for outside changes at most once per interval", () => withClock(asy
     await unlink(join(directory, "docs/c.md"));
     advance();
     assert.deepEqual([...getPageGraph(directory, options).pages].sort(), ["README.md", "a.md", "b.md"], "Removed pages are dropped.");
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+}));
+
+test("a sweep keeps the graph when a page's file changed but its text did not", () => withClock(async ({ advance }) => {
+  const directory = await tree({ "README.md": "# Root\n\n[A](a.md)\n", "a.md": "# A\n" });
+  try {
+    const graph = getPageGraph(directory, options);
+    const later = new Date(Date.now() + 60_000);
+    await utimes(join(directory, "README.md"), later, later);
+    await utimes(join(directory, "a.md"), later, later);
+    advance();
+    assert.equal(getPageGraph(directory, options), graph, "Touched pages with the same text keep the graph.");
+
+    await writeFile(join(directory, "README.md"), "# Root\n");
+    advance();
+    assert.deepEqual(unreachable(getPageGraph(directory, options)), ["a.md"], "Changed text is still parsed again.");
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+}));
+
+test("links to pages that appear later count once the pages exist", () => withClock(async ({ advance }) => {
+  const directory = await tree({ "README.md": "# Root\n\n[Later](later.md) [Docs](docs/)\n", "a.md": "# A\n" });
+  try {
+    assert.deepEqual(unreachable(getPageGraph(directory, options)), ["a.md"]);
+
+    await writeFile(join(directory, "later.md"), "# Later\n\n[A](a.md)\n");
+    advance();
+    assert.deepEqual(unreachable(getPageGraph(directory, options)), [], "A page added by a sweep is resolved again.");
+
+    await mkdir(join(directory, "docs"));
+    await writeFile(join(directory, "docs/README.md"), "# Docs\n");
+    const live = getPageGraph(directory, options, { page: "docs/README.md", text: "# Docs\n" });
+    assert.ok(live.reachable.has("docs/README.md"), "A page added from linted text is resolved again.");
+
+    await unlink(join(directory, "later.md"));
+    advance();
+    assert.deepEqual(unreachable(getPageGraph(directory, options)), ["a.md"], "Removing a page drops the edges through it.");
   } finally {
     await rm(directory, { recursive: true, force: true });
   }

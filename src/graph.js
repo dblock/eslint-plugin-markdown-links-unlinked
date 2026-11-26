@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { lstatSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join, posix } from "node:path";
 import picomatch from "picomatch";
@@ -21,9 +22,20 @@ let now = () => Date.now();
 
 /**
  * @typedef {object} GraphState
- * @property {Map<string, {signature: string, links: string[]}>} pages Each page's file signature and link destinations.
+ * @property {Map<string, PageEntry>} pages Each discovered page.
+ * @property {number} version Incremented whenever pages are added or removed, which invalidates
+ *   every page's resolved targets.
  * @property {number} sweptAt Clock time of the last sweep.
  * @property {PageGraph | undefined} graph Reachability for the current pages, or `undefined` once edges change.
+ */
+
+/**
+ * @typedef {object} PageEntry
+ * @property {string} signature File modification time and size.
+ * @property {string} digest Digest of the text the links were parsed from.
+ * @property {string[]} links Link destinations.
+ * @property {string[]} [targets] Pages the links resolve to, valid while `targetsVersion` matches.
+ * @property {number} [targetsVersion] State version the targets were resolved against.
  */
 
 /** @type {Map<string, GraphState>} */
@@ -43,7 +55,7 @@ export function getPageGraph(rootDir, options, live) {
   let state = states.get(key);
   let parsedLive = false;
   if (!state) {
-    state = { pages: new Map(), sweptAt: now(), graph: undefined };
+    state = { pages: new Map(), sweptAt: now(), graph: undefined, version: 0 };
     states.set(key, state);
     parsedLive = sweep(rootDir, options, state, live);
   } else if (now() - state.sweptAt >= SWEEP_INTERVAL) {
@@ -51,7 +63,7 @@ export function getPageGraph(rootDir, options, live) {
     parsedLive = sweep(rootDir, options, state, live);
   }
   if (live && !parsedLive) applyLive(rootDir, options, state, live);
-  state.graph ??= buildGraph(state.pages, options);
+  state.graph ??= buildGraph(state.pages, options, state.version);
   return state.graph;
 }
 
@@ -75,7 +87,8 @@ export function setClock(clock) {
 
 /**
  * Walks the root directory and brings the state up to date: pages that disappeared are dropped,
- * and pages that are new or whose modification time or size changed are parsed again. The linted
+ * and pages that are new or whose modification time or size changed are parsed again unless their
+ * text is unchanged. The linted
  * page is parsed from its live text instead of from disk.
  * @returns {boolean} Whether the linted page was parsed.
  */
@@ -85,15 +98,23 @@ function sweep(rootDir, options, state, live) {
     if (!found.has(page)) {
       state.pages.delete(page);
       state.graph = undefined;
+      state.version++;
     }
   }
   let parsedLive = false;
   for (const [page, signature] of found) {
-    if (state.pages.get(page)?.signature === signature) continue;
+    const entry = state.pages.get(page);
+    if (entry?.signature === signature) continue;
     const isLive = live?.page === page;
     parsedLive ||= isLive;
     const text = isLive ? live.text : read(join(rootDir, page));
-    state.pages.set(page, { signature, links: text === undefined ? [] : extractLinks(text) });
+    const textDigest = text === undefined ? "" : digest(text);
+    if (entry && text !== undefined && entry.digest === textDigest) {
+      entry.signature = signature;
+      continue;
+    }
+    if (!entry) state.version++;
+    state.pages.set(page, { signature, digest: textDigest, links: text === undefined ? [] : extractLinks(text) });
     state.graph = undefined;
   }
   return parsedLive;
@@ -101,20 +122,26 @@ function sweep(rootDir, options, state, live) {
 
 /**
  * Replaces the linted page's links with those in its current text, adding the page when it is on
- * disk but appeared since the last sweep. Text without a qualifying file is ignored.
+ * disk but appeared since the last sweep. Text without a qualifying file is ignored, and text whose
+ * digest matches the text the page's links were last parsed from is not parsed again.
  */
 function applyLive(rootDir, options, state, { page, text }) {
   let entry = state.pages.get(page);
   if (!entry) {
     const signature = pageSignature(rootDir, page, options);
     if (signature === undefined) return;
-    entry = { signature, links: [] };
+    entry = { signature, digest: "", links: [] };
     state.pages.set(page, entry);
     state.graph = undefined;
+    state.version++;
   }
+  const textDigest = digest(text);
+  if (textDigest === entry.digest) return;
+  entry.digest = textDigest;
   const links = extractLinks(text);
   if (links.length === entry.links.length && links.every((link, index) => link === entry.links[index])) return;
   entry.links = links;
+  entry.targets = undefined;
   state.graph = undefined;
 }
 
@@ -182,6 +209,16 @@ function signature(path) {
   }
 }
 
+/**
+ * Returns a digest of a page's text, so text that was already parsed, typically the linted page
+ * read from disk by the sweep moments earlier, is not parsed again.
+ * @param {string} text Page text.
+ * @returns {string} The digest.
+ */
+function digest(text) {
+  return createHash("sha256").update(text).digest("base64");
+}
+
 function read(path) {
   try {
     return readFileSync(path, "utf8");
@@ -192,24 +229,36 @@ function read(path) {
 
 /**
  * Computes which pages are reachable from the roots by a breadth-first search over the links.
- * @param {Map<string, {links: string[]}>} pageLinks Each discovered page's link destinations.
+ * When a version is given, each page's resolved targets are cached on its entry and reused by
+ * later searches with the same version, so only pages whose links changed are resolved again.
+ * @param {Map<string, {links: string[], targets?: string[], targetsVersion?: number}>} pageLinks
+ *   Each discovered page's link destinations.
  * @param {{roots: string[], extensions: string[]}} options Normalized options.
+ * @param {number} [version] Version of the page set, to cache resolved targets against.
  * @returns {PageGraph} The page graph.
  */
-export function buildGraph(pageLinks, { roots: rootPatterns, extensions }) {
+export function buildGraph(pageLinks, { roots: rootPatterns, extensions }, version) {
   const pages = new Set(pageLinks.keys());
   const isRoot = picomatch(rootPatterns, { dot: true });
   const roots = [...pages].filter((page) => isRoot(page));
   const reachable = new Set(roots);
   const queue = [...roots];
-  while (queue.length > 0) {
-    const page = queue.shift();
-    for (const destination of pageLinks.get(page).links) {
-      for (const target of resolveTargets(page, destination, pages, extensions)) {
-        if (!reachable.has(target)) {
-          reachable.add(target);
-          queue.push(target);
-        }
+  for (let index = 0; index < queue.length; index++) {
+    const page = queue[index];
+    const entry = pageLinks.get(page);
+    let targets = version !== undefined && entry.targetsVersion === version ? entry.targets : undefined;
+    if (!targets) {
+      targets = [];
+      for (const destination of entry.links) targets.push(...resolveTargets(page, destination, pages, extensions));
+      if (version !== undefined) {
+        entry.targets = targets;
+        entry.targetsVersion = version;
+      }
+    }
+    for (const target of targets) {
+      if (!reachable.has(target)) {
+        reachable.add(target);
+        queue.push(target);
       }
     }
   }
